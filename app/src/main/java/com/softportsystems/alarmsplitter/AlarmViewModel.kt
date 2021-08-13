@@ -13,14 +13,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import com.softportsystems.alarmsplitter.database.Alarm
 import com.softportsystems.alarmsplitter.database.AppDataBase
+import com.softportsystems.alarmsplitter.logic.AlarmMaker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlin.math.min
 import kotlin.random.Random
 
 class AlarmViewModel(application: Application): AndroidViewModel(application) {
@@ -34,6 +33,8 @@ class AlarmViewModel(application: Application): AndroidViewModel(application) {
     var alarms:List<Alarm> by mutableStateOf(listOf())
     lateinit var db:AppDataBase
     val context = application.applicationContext
+    private lateinit var alarmMaker: AlarmMaker
+
 
 
     init {
@@ -41,8 +42,9 @@ class AlarmViewModel(application: Application): AndroidViewModel(application) {
         viewModelScope.launch {
             db =Room.databaseBuilder(context,AppDataBase::class.java,
                 "alarm-db").build()
+            alarmMaker = AlarmMaker(context = context)
 
-            alarmMgr = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+         //   alarmMgr = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
         }
     }
@@ -102,11 +104,11 @@ class AlarmViewModel(application: Application): AndroidViewModel(application) {
 
                 //send alarm intent
                var start_mins =  mins.toInt()
-                for (i in 1..1){
+              //  for (i in 1..1){
 
-                    setAlarm(alarmHour,start_mins,alarmId)
+                   alarmMaker. setAlarm(alarmHour,start_mins,alarmId)
                     start_mins += 1
-                }
+               // }
 
 
             }
@@ -137,6 +139,7 @@ class AlarmViewModel(application: Application): AndroidViewModel(application) {
                 db.alarmDao().delete(alarm)
                 Log.d("createalarm","alarm deleted")
 
+                //cancel alarm from system
                 cancelAlarm(alarmId = alarm.id)
                 //refresh alarms
                 getAlarms()
@@ -149,32 +152,10 @@ class AlarmViewModel(application: Application): AndroidViewModel(application) {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.N)
-    private fun setAlarm(timeHr:Int,timeMins:Int,alarmId:Int){
-        Log.d("setalarm","setting alarm $timeHr:$timeMins")
-        alarmIntent = Intent(context, AlarmReciever::class.java).let { intent ->
-            intent.putExtra("alarmId",alarmId.toString())
-            PendingIntent.getBroadcast(context, alarmId, intent, 0)
-
-        }
-       // alarmIntent.
-
-        val calendar: Calendar = Calendar.getInstance().apply {
-            timeInMillis = System.currentTimeMillis()
-
-            set(Calendar.HOUR_OF_DAY, timeHr)
-            set(Calendar.MINUTE,timeMins)
-        }
-        alarmIntent
-
-        alarmMgr?.setRepeating(AlarmManager.RTC_WAKEUP,calendar.timeInMillis,
-            1000 * 60 * 1, //alarm must not repeat
-            alarmIntent)
-    }
 
    private fun cancelAlarm(alarmId: Int){
         alarmIntent = Intent(context, AlarmReciever::class.java).let { intent ->
-            intent.putExtra("alarmId",alarmId.toString())
+           // intent.putExtra("alarmId",alarmId.toString())
             PendingIntent.getBroadcast(context, alarmId, intent, 0)
 
         }
